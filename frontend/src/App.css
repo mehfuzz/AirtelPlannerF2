@@ -1,34 +1,87 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Airtel PPO Tracker Styles */
+
+/* Login page hero section */
+.login-hero {
+    background-image: url('https://images.unsplash.com/photo-1708457753320-02e52a276a80?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwyfHxyZWQlMjBhYnN0cmFjdCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzc0OTQwODU3fDA&ixlib=rb-4.1.0&q=85');
+    background-size: cover;
+    background-position: center;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Progress bar animations */
+.progress-bar-fill {
+    transition: width 0.5s ease-in-out;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+/* Card hover effects */
+.week-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.week-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Task item styles */
+.task-item {
+    transition: background-color 0.15s ease;
+}
+
+.task-item:hover {
+    background-color: #f9fafb;
+}
+
+/* Checkbox custom styles */
+.task-checkbox[data-state="checked"] {
+    background-color: #E40000;
+    border-color: #E40000;
+}
+
+/* Button styles */
+.btn-airtel {
+    background-color: #E40000;
+    color: white;
+    transition: background-color 0.2s ease;
+}
+
+.btn-airtel:hover {
+    background-color: #B30000;
+}
+
+.btn-airtel:focus {
+    box-shadow: 0 0 0 3px rgba(228, 0, 0, 0.3);
+}
+
+/* Edit mode input */
+.edit-input {
+    background: transparent;
+    border-bottom: 2px solid #E40000;
+    outline: none;
+}
+
+/* Save indicator */
+.save-indicator {
+    transition: opacity 0.3s ease;
+}
+
+/* Accordion content animation */
+.accordion-content {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Comment styles */
+.comment-item {
+    border-left: 2px solid #E40000;
+    padding-left: 12px;
+}
+
+/* Badge styles */
+.badge-completed {
+    background-color: #10B981;
     color: white;
 }
 
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.badge-pending {
+    background-color: #F3F4F6;
+    color: #4B5563;
 }
