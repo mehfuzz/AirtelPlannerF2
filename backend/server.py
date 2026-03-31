@@ -119,6 +119,7 @@ class TaskUpdate(BaseModel):
 
 class CommentCreate(BaseModel):
     text: str
+    is_mentor_comment: Optional[bool] = False
 
 class WeekUpdate(BaseModel):
     title: Optional[str] = None
@@ -395,6 +396,7 @@ async def add_comment(week_id: str, task_id: str, comment: CommentCreate, user: 
     new_comment = {
         "id": comment_id,
         "text": comment.text,
+        "is_mentor_comment": comment.is_mentor_comment,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["id"],
         "created_by_name": user["name"]

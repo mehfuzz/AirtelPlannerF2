@@ -346,6 +346,38 @@ const DashboardPage = () => {
     }
   };
 
+  // Add mentor comment (visible on task)
+  const addMentorComment = async (weekId, taskId, text) => {
+    setSaving(true);
+    try {
+      const response = await axios.post(
+        `${API}/weeks/${weekId}/tasks/${taskId}/comments`,
+        { text, is_mentor_comment: true }
+      );
+      
+      setWeeks(prev => prev.map(w => {
+        if (w.id === weekId) {
+          return {
+            ...w,
+            tasks: w.tasks.map(t => {
+              if (t.id === taskId) {
+                return { ...t, comments: [...(t.comments || []), response.data] };
+              }
+              return t;
+            })
+          };
+        }
+        return w;
+      }));
+      
+      toast.success("Mentor comment added");
+    } catch (error) {
+      toast.error(formatApiError(error.response?.data?.detail));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Get tasks for a specific date
   const getTasksForDate = (date) => {
     const tasks = [];
@@ -807,6 +839,7 @@ const DashboardPage = () => {
                             onDrop={handleDrop}
                             isDragOver={dragOverTask?.task?.id === task.id && dragOverTask?.weekId === week.id}
                             isDragging={draggedTask?.task?.id === task.id}
+                            onAddMentorComment={addMentorComment}
                           />
                         ))}
                       </div>
@@ -1119,149 +1152,229 @@ const DraggableTaskItem = ({
   task, weekId, weekNumber, editingTaskId, setEditingTaskId, 
   toggleTaskCompletion, updateTask, deleteTask, openCommentDialog,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
-  isDragOver, isDragging
+  isDragOver, isDragging, onAddMentorComment
 }) => {
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDueDate, setEditDueDate] = useState(task.due_date ? new Date(task.due_date) : null);
+  const [mentorComment, setMentorComment] = useState("");
+  const [isAddingComment, setIsAddingComment] = useState(false);
   const isEditing = editingTaskId === task.id;
+
+  // Get mentor comments (comments by Kushal)
+  const mentorComments = (task.comments || []).filter(c => c.is_mentor_comment);
+
+  const handleAddMentorComment = async () => {
+    if (!mentorComment.trim()) return;
+    await onAddMentorComment(weekId, task.id, mentorComment);
+    setMentorComment("");
+    setIsAddingComment(false);
+  };
 
   return (
     <div
-      draggable={!isEditing}
+      draggable={!isEditing && !isAddingComment}
       onDragStart={(e) => onDragStart(e, task, weekId)}
       onDragEnd={onDragEnd}
       onDragOver={(e) => onDragOver(e, task, weekId)}
       onDragLeave={onDragLeave}
       onDrop={(e) => onDrop(e, task, weekId)}
-      className={`task-item flex items-start gap-2 p-3 rounded-lg border transition-all ${
+      className={`task-item p-3 rounded-lg border transition-all ${
         task.completed ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
       } ${isDragOver ? "border-[#E40000] border-2 bg-red-50" : ""} ${isDragging ? "opacity-50" : ""}`}
       data-testid={`task-${task.id}`}
     >
-      {/* Drag Handle */}
-      <div
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded transition-colors mt-0.5"
-        data-testid={`task-${task.id}-drag-handle`}
-      >
-        <GripVertical className="w-4 h-4 text-gray-400" />
-      </div>
+      <div className="flex items-start gap-2">
+        {/* Drag Handle */}
+        <div
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded transition-colors mt-0.5"
+          data-testid={`task-${task.id}-drag-handle`}
+        >
+          <GripVertical className="w-4 h-4 text-gray-400" />
+        </div>
 
-      <Checkbox
-        checked={task.completed}
-        onCheckedChange={() => toggleTaskCompletion(weekId, task.id, task.completed)}
-        className="mt-1 task-checkbox data-[state=checked]:bg-[#E40000] data-[state=checked]:border-[#E40000]"
-        data-testid={`task-${task.id}-checkbox`}
-      />
-      
-      <div className="flex-1 min-w-0">
-        {isEditing ? (
-          <div className="space-y-2" onClick={e => e.stopPropagation()}>
-            <Input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="h-8"
-              autoFocus
-              data-testid={`task-${task.id}-title-input`}
-            />
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-xs" data-testid={`task-${task.id}-due-date-trigger`}>
-                    <CalendarIcon className="w-3 h-3 mr-1" />
-                    {editDueDate ? format(editDueDate, "MMM d") : "Due date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={editDueDate}
-                    onSelect={setEditDueDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button
-                size="sm"
-                onClick={() => {
-                  updateTask(weekId, task.id, {
-                    title: editTitle,
-                    due_date: editDueDate ? format(editDueDate, "yyyy-MM-dd") : null
-                  });
-                }}
-                className="bg-[#E40000] hover:bg-[#B30000] h-7 px-2"
-                data-testid={`task-${task.id}-save`}
-              >
-                <Check className="w-4 h-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setEditingTaskId(null);
-                  setEditTitle(task.title);
-                  setEditDueDate(task.due_date ? new Date(task.due_date) : null);
-                }}
-                className="h-7 px-2"
-                data-testid={`task-${task.id}-cancel`}
-              >
-                <X className="w-4 h-4" />
-              </Button>
+        <Checkbox
+          checked={task.completed}
+          onCheckedChange={() => toggleTaskCompletion(weekId, task.id, task.completed)}
+          className="mt-1 task-checkbox data-[state=checked]:bg-[#E40000] data-[state=checked]:border-[#E40000]"
+          data-testid={`task-${task.id}-checkbox`}
+        />
+        
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="space-y-2" onClick={e => e.stopPropagation()}>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="h-8"
+                autoFocus
+                data-testid={`task-${task.id}-title-input`}
+              />
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-xs" data-testid={`task-${task.id}-due-date-trigger`}>
+                      <CalendarIcon className="w-3 h-3 mr-1" />
+                      {editDueDate ? format(editDueDate, "MMM d") : "Due date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editDueDate}
+                      onSelect={setEditDueDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    updateTask(weekId, task.id, {
+                      title: editTitle,
+                      due_date: editDueDate ? format(editDueDate, "yyyy-MM-dd") : null
+                    });
+                  }}
+                  className="bg-[#E40000] hover:bg-[#B30000] h-7 px-2"
+                  data-testid={`task-${task.id}-save`}
+                >
+                  <Check className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingTaskId(null);
+                    setEditTitle(task.title);
+                    setEditDueDate(task.due_date ? new Date(task.due_date) : null);
+                  }}
+                  className="h-7 px-2"
+                  data-testid={`task-${task.id}-cancel`}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div>
-            <p
-              className={`text-sm ${task.completed ? "line-through text-gray-500" : "text-gray-900"} cursor-pointer hover:text-[#E40000] transition-colors`}
-              onClick={() => setEditingTaskId(task.id)}
-              data-testid={`task-${task.id}-title`}
-            >
-              {task.title}
-            </p>
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-              {task.due_date && (
-                <span className="flex items-center gap-1" data-testid={`task-${task.id}-due-date`}>
-                  <Clock className="w-3 h-3" />
-                  {new Date(task.due_date).toLocaleDateString()}
-                </span>
-              )}
-              {task.comments?.length > 0 && (
-                <span className="flex items-center gap-1" data-testid={`task-${task.id}-comments-count`}>
-                  <MessageSquare className="w-3 h-3" />
-                  {task.comments.length}
-                </span>
-              )}
+          ) : (
+            <div>
+              <p
+                className={`text-sm ${task.completed ? "line-through text-gray-500" : "text-gray-900"} cursor-pointer hover:text-[#E40000] transition-colors`}
+                onClick={() => setEditingTaskId(task.id)}
+                data-testid={`task-${task.id}-title`}
+              >
+                {task.title}
+              </p>
+              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                {task.due_date && (
+                  <span className="flex items-center gap-1" data-testid={`task-${task.id}-due-date`}>
+                    <Clock className="w-3 h-3" />
+                    {new Date(task.due_date).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {!isEditing && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`task-${task.id}-menu`}>
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setEditingTaskId(task.id)} data-testid={`task-${task.id}-edit`}>
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => deleteTask(weekId, task.id)}
+                className="text-red-600 focus:text-red-600"
+                data-testid={`task-${task.id}-delete`}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
-      {!isEditing && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`task-${task.id}-menu`}>
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setEditingTaskId(task.id)} data-testid={`task-${task.id}-edit`}>
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openCommentDialog(task)} data-testid={`task-${task.id}-comments`}>
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Comments
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => deleteTask(weekId, task.id)}
-              className="text-red-600 focus:text-red-600"
-              data-testid={`task-${task.id}-delete`}
+      {/* Mentor Comment Section - Always Visible */}
+      <div className="mt-3 ml-12 border-l-2 border-[#E40000] pl-3" data-testid={`task-${task.id}-mentor-section`}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 bg-[#E40000] rounded-full flex items-center justify-center">
+            <span className="text-white text-xs font-bold">K</span>
+          </div>
+          <span className="text-sm font-medium text-gray-700">Comment by Kushal (Mentor)</span>
+        </div>
+
+        {/* Existing mentor comments */}
+        {mentorComments.length > 0 && (
+          <div className="space-y-2 mb-2">
+            {mentorComments.map((comment) => (
+              <div key={comment.id} className="bg-red-50 rounded-lg p-2 text-sm text-gray-700" data-testid={`mentor-comment-${comment.id}`}>
+                <p>{comment.text}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(comment.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add comment input */}
+        {isAddingComment ? (
+          <div className="flex gap-2">
+            <Input
+              value={mentorComment}
+              onChange={(e) => setMentorComment(e.target.value)}
+              placeholder="Add feedback or guidance..."
+              className="flex-1 h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddMentorComment();
+                } else if (e.key === "Escape") {
+                  setIsAddingComment(false);
+                  setMentorComment("");
+                }
+              }}
+              data-testid={`task-${task.id}-mentor-comment-input`}
+            />
+            <Button
+              size="sm"
+              onClick={handleAddMentorComment}
+              disabled={!mentorComment.trim()}
+              className="bg-[#E40000] hover:bg-[#B30000] h-8 px-3"
+              data-testid={`task-${task.id}-mentor-comment-submit`}
             >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+              <Check className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setIsAddingComment(false);
+                setMentorComment("");
+              }}
+              className="h-8 px-2"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setIsAddingComment(true)}
+            className="text-sm text-[#E40000] hover:text-[#B30000] flex items-center gap-1 transition-colors"
+            data-testid={`task-${task.id}-add-mentor-comment`}
+          >
+            <Plus className="w-4 h-4" />
+            {mentorComments.length > 0 ? "Add another comment" : "Add comment"}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
