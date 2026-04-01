@@ -31,6 +31,5 @@
     "SUPABASE_URL": "https://qevlsnzpmbzwhsazcvpr.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_kUYN75ZOKexkPL6vsXkGlQ_bC25Nf_V",
     "SUPABASE_SERVICE_KEY": "sb_secret_xFRb3NHBqwCVzl-_wcugsg__ysVBZST",
-    "JWT_SECRET": "@jwt_secret"
   }
 }
